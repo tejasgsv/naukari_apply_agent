@@ -1,13 +1,3 @@
-"""Configuration loader.
-
-Only Phase-6 relevant fields are kept.
-
-Design:
-- Environment variables override defaults.
-- No external dependencies.
-- `Settings.load()` must return a syntactically valid `Settings` instance.
-"""
-
 from __future__ import annotations
 
 import os
@@ -40,8 +30,6 @@ def _get_list(name: str, default: List[str]) -> List[str]:
 
 
 def _get_dict(name: str, default: Dict[str, Any]) -> Dict[str, Any]:
-    # Phase-6 keeps this safe: do not parse JSON here (not required).
-    # If you later want JSON parsing, do it in Phase 7+ with clear validation.
     raw = os.getenv(name)
     if not raw:
         return default
@@ -50,7 +38,6 @@ def _get_dict(name: str, default: Dict[str, Any]) -> Dict[str, Any]:
 
 @dataclass(frozen=True)
 class Settings:
-    # Required by the rest of the project
     roles: List[str]
     country: str
     max_pages: int
@@ -75,20 +62,28 @@ class Settings:
     def load() -> "Settings":
         roles = _get_list(
             "ROLES",
-            default=["DevOps Engineer", "Cloud Engineer", "Platform Engineer"],
+            default=[
+                "DevOps Engineer",
+                "Cloud Engineer",
+                "Platform Engineer",
+            ],
         )
 
         country = os.getenv("COUNTRY", "India")
         max_pages = _get_int("MAX_PAGES", 3)
-        headless = _get_bool("HEADLESS", default=False)
+        headless = _get_bool("HEADLESS", False)
 
-        # Ollama
+        # Ollama config
         ollama_model = os.getenv("OLLAMA_MODEL", "llama3:latest")
         ollama_base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 
-        resume_path = os.getenv("RESUME_PATH", "resumes/TEJAS_DEVOPS_UPDATED_CV.pdf")
+        resume_path = os.getenv(
+            "RESUME_PATH",
+            "resumes/TEJAS_DEVOPS_UPDATED_CV.pdf"
+        )
 
-        remote_only = _get_bool("REMOTE_ONLY", default=True)
+        # IMPORTANT FIX
+        remote_only = _get_bool("REMOTE_ONLY", False)
 
         job_post_max_age_hours = _get_int("JOB_POST_MAX_AGE_HOURS", 24)
         check_interval_minutes = _get_int("CHECK_INTERVAL_MINUTES", 60)
@@ -96,8 +91,13 @@ class Settings:
 
         profile = {
             "name": os.getenv("PROFILE_NAME", "Tejas Goswami"),
-            "experience_years": float(os.getenv("PROFILE_EXPERIENCE_YEARS", "1.5")),
-            "current_company": os.getenv("PROFILE_CURRENT_COMPANY", "Reliance Jio"),
+            "experience_years": float(
+                os.getenv("PROFILE_EXPERIENCE_YEARS", "1.5")
+            ),
+            "current_company": os.getenv(
+                "PROFILE_CURRENT_COMPANY",
+                "Reliance Jio"
+            ),
             "skills": _get_list(
                 "PROFILE_SKILLS",
                 default=[
@@ -115,7 +115,7 @@ class Settings:
             ),
         }
 
-        filters = _get_dict("FILTERS", default={})
+        filters = _get_dict("FILTERS", {})
         browser_executable_path = os.getenv("BROWSER_PATH")
 
         return Settings(
@@ -134,4 +134,3 @@ class Settings:
             filters=filters,
             browser_executable_path=browser_executable_path,
         )
-

@@ -83,17 +83,24 @@ class OllamaClient:
         raise ValueError("Unterminated JSON object")
 
     def generate_response(self, prompt: str) -> OllamaResponse:
+        requests = self._get_requests()
+
         payload = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
         }
-        resp = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=self.timeout_sec)
+        resp = requests.post(
+            f"{self.base_url}/api/generate",
+            json=payload,
+            timeout=self.timeout_sec,
+        )
         resp.raise_for_status()
         data = resp.json()
         raw_text = data.get("response") or ""
         usage = data.get("eval_count")  # Ollama may not provide token usage consistently
         return OllamaResponse(raw_text=str(raw_text), usage={"eval_count": usage} if usage else None)
+
 
     def generate_json(self, prompt: str) -> Dict[str, Any]:
         """Generate JSON from Ollama. Best-effort malformed JSON recovery.

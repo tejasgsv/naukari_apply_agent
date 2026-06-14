@@ -138,7 +138,12 @@ class IndeedBot(PlatformBot):
             start = page_num * 10
             url = self._build_search_url(role=role, start=start)
             try:
-                page.goto(url, timeout=30000)
+                page.goto(
+                    url,
+                    wait_until="domcontentloaded",
+                    timeout=90000,
+                )
+
             except Exception:
                 continue
 
@@ -217,11 +222,25 @@ class IndeedBot(PlatformBot):
                     skipped += 1
                     continue
 
-                decision = self._ai_decide(job)
+                try:
+                    decision = self._ai_decide(job)
+                except Exception as e:
+                    # If AI scoring fails, continue safely.
+                    logging.getLogger(__name__).exception(
+                        "AI engine failed; continuing with safe fallback. error=%s",
+                        e,
+                    )
+                    decision = {
+                        "decision": "APPLY",
+                        "reason": "ai_scoring_failed_fallback",
+                        "match_score": 50,
+                    }
+
                 if isinstance(decision, dict):
                     self._print_job_ai(job, decision)
 
                 if decision.get("decision") != "APPLY":
+
                     reason = decision.get("reason", "")
                     match_score = decision.get("match_score", "")
                     print(f"[SKIP] {reason or 'ai_skip'} title={title} company={company} match_score={match_score}")

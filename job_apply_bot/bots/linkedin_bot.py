@@ -107,8 +107,13 @@ class LinkedInBot(PlatformBot):
         for page_num in range(max_pages):
             start = page_num * 25
             search_url = self._build_search_url(role=role, start=start)
-            page.goto(search_url)
+            page.goto(
+                search_url,
+                wait_until="domcontentloaded",
+                timeout=90000,
+            )
             behavior.random_mouse_move(page)
+
             behavior.human_delay(4, 8)
 
             cards = page.locator(self._SELECTORS["job_cards"]).all()
@@ -356,13 +361,23 @@ class LinkedInBot(PlatformBot):
 
                 policy={},
             )
-        except Exception:
-            # If Ollama fails, skip gracefully.
+        except Exception as e:
+            # If AI scoring fails (e.g., Ollama timeout), continue safely.
             title = job.get("title", "")
             company = job.get("company", "")
-            log.exception("AI engine failed; skipping job: title=%s company=%s", title, company)
-            print(f"[SKIP] ai_error title={title} company={company}")
-            return "SKIPPED"
+            log.exception(
+                "AI engine failed; continuing with safe fallback. title=%s company=%s error=%s",
+                title,
+                company,
+                e,
+            )
+            print(f"[AI] fallback_due_to_ai_error title={title} company={company}")
+            decision = {
+                "decision": "APPLY",
+                "reason": "ai_scoring_failed_fallback",
+                "match_score": 50,
+            }
+
 
         # Print required fields.
         if isinstance(decision, dict):
