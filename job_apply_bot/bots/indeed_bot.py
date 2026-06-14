@@ -191,6 +191,8 @@ class IndeedBot(PlatformBot):
                     }
                 )
 
+
+
             if len(postings) > 50:
                 break
 

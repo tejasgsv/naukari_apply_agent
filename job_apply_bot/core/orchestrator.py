@@ -27,9 +27,11 @@ from job_apply_bot.bots.indeed_bot import IndeedBot
 from job_apply_bot.config.settings import Settings
 from job_apply_bot.logging.setup import get_logger
 from job_apply_bot.tracking.tracker import Tracker
+from job_apply_bot.ats.router import ATSRouter
 
 
 def _summarize(start: Dict[str, int], add: Tuple[int, int, int, int]) -> Dict[str, int]:
+
     applied, skipped, failed, manual = add
     start["applied"] += applied
     start["skipped"] += skipped

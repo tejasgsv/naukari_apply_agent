@@ -225,9 +225,13 @@ class NaukriBot(PlatformBot):
                         "title": title,
                         "company": company,
                         "job_url": href or page.url,
+                        # External apply best-effort placeholder; details-page extraction not implemented in this phase.
+                        "external_apply_url": None,
                         "description": description,
                     }
                 )
+
+
 
             if len(postings) > 50:
                 break

@@ -143,8 +143,46 @@ class LinkedInBot(PlatformBot):
 
                     job_url = page.url
 
+                    external_apply_url = None
+                    try:
+                        # Try common offsite/apply links
+                        offsite = page.locator('a[href*="offsite"]').first
+                        if offsite.is_visible():
+                            external_apply_url = offsite.get_attribute("href")
+                    except Exception:
+                        external_apply_url = None
+
+                    try:
+                        if not external_apply_url:
+                            btn = page.locator('button:has-text("Apply on company website"), a:has-text("Apply on company website"), a:has-text("Apply")').first
+                            if btn.is_visible():
+                                external_apply_url = btn.get_attribute("href")
+                    except Exception:
+                        pass
+
+                    # Fallback heuristic: any visible link that isn't linkedin.com counts as external_apply_url
+                    try:
+                        if not external_apply_url:
+                            links = page.locator('a[href]').all()
+                            for a in links:
+                                try:
+                                    href = a.get_attribute("href")
+                                    if not href:
+                                        continue
+                                    low = href.lower()
+                                    if ("linkedin.com" not in low) and ("http" in low):
+                                        # Avoid accidental navigation links: prefer apply-ish anchors
+                                        if "apply" in low or "offsite" in low or "career" in low:
+                                            external_apply_url = href
+                                            break
+                                except Exception:
+                                    continue
+                    except Exception:
+                        pass
+
                     if not title or not company:
                         continue
+
 
                     signature = self.tracker.signature_for(
                         platform=self.platform,
