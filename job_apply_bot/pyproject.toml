@@ -1,0 +1,9 @@
+[project]
+name = "job-apply-bot"
+version = "0.1.0"
+description = "AI job application bot (Playwright + local Ollama)"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 100
+

@@ -1,0 +1,10 @@
+.venv/
+**pycache**/
+*.pyc
+sessions/
+data/
+.env
+playwright-report/
+test-results/
+*.log
+
