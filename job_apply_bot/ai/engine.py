@@ -20,8 +20,17 @@ from job_apply_bot.ai.schema import validate_answers
 
 class AIEngine:
     def __init__(self, settings: Settings):
-        self.client = OllamaClient(settings.ollama_base_url, settings.ollama_model)
         self.settings = settings
+
+        # GitHub Actions compatibility: when REMOTE_ONLY=true we must not require
+        # local Ollama. Use fallback logic instead.
+        self.remote_only = bool(getattr(settings, "remote_only", False)) is True
+
+        if self.remote_only:
+            self.client = None
+        else:
+            self.client = OllamaClient(settings.ollama_base_url, settings.ollama_model)
+
 
     def _prompt_analyze_job(self, profile: Dict[str, Any], job_title: str, company: str, description: str, policy: Dict[str, Any]) -> str:
         # NOTE: config/prompts.py is still a stub; keep prompt inline for now.
@@ -111,6 +120,20 @@ Rules:
 
 
         # Skills match and easy-apply are evaluated via Ollama.
+        # In REMOTE_ONLY/fallback mode we must not call local Ollama.
+        if self.client is None:
+            # In REMOTE_ONLY mode we cannot score with local Ollama.
+            # Keep automation running by returning a safe deterministic APPLY.
+            return {
+                "decision": "APPLY",
+                "reason": "remote fallback mode",
+                "match_score": 75,
+                "skills_matched": [],
+                "skills_missing": [],
+                "custom_pitch": "",
+            }
+
+
         # Prompt Ollama to return strict JSON, then hard-filter by match_score.
         prompt = self._prompt_analyze_job(
             profile=profile,
@@ -120,6 +143,7 @@ Rules:
             policy=policy,
         )
         payload = self.client.generate_json(prompt)
+
 
         # Reject if Ollama returns missing/low match.
         match_score = payload.get("match_score", None)
@@ -179,6 +203,11 @@ Guidelines:
 
     def analyze_application_questions(self, question: str, profile: Dict[str, Any]) -> Dict[str, str]:
         """Return mapping for a single question."""
+
+        # Fallback mode: never call Ollama.
+        if self.client is None:
+            return validate_answers({question: ""})
+
         prompt = self._prompt_answer_questions(profile=profile, question=question)
         payload = self.client.generate_json(prompt)
 
@@ -186,5 +215,6 @@ Guidelines:
         if not isinstance(payload, dict) or "answer" not in payload:
             raise ValueError("Invalid answers payload")
         return validate_answers({question: payload.get("answer", "")})
+
 
 

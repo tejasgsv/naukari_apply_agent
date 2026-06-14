@@ -1,7 +1,15 @@
-TODO (Phase 7):
-1) Update core/orchestrator.py: import NaukriBot + IndeedBot; extend orchestration to run those bots and ensure session files are used.
-2) Update login.py: add --platform CLI; support linkedin/naukri/indeed login URLs; save sessions/{platform}_session.json.
-3) Implement bots/naukri_bot.py: Playwright-based scraping with resilient selectors + heuristics for last 24h jobs; duplicate prevention; AI decision; apply flow (best-effort) with skip logging.
-4) Implement bots/indeed_bot.py: same as Naukri.
-5) Compile validation only for the Phase 7 files.
-6) Ensure LinkedIn bot and ai/engine remain untouched.
+# TODO - GitHub Actions compatibility updates for job_apply_bot
+
+- [x] Update AI engine to bypass Ollama when REMOTE_ONLY=true and provide fallback behaviors.
+
+- [ ] Update orchestrator to never abort run due to missing/failed Ollama; continue with fallback.
+- [ ] Expand Settings.profile loading from env/secrets and define required profile fields.
+- [ ] Add validation for required profile fields before attempting application; skip safely if missing.
+- [ ] Enhance logging setup to always create `logs/` and write to file.
+- [ ] Update orchestrator/session handling: if session artifacts missing, skip platform restore without failing.
+- [ ] Ensure session persistence remains saved to `sessions/` after login (verify login/session manager flow).
+- [ ] Improve error logging for job search and apply failures with context.
+- [ ] Ensure Playwright remains headless in GH Actions via HEADLESS setting.
+- [ ] Ensure bot continues safely even if AI scoring fails (no global aborts).
+
+

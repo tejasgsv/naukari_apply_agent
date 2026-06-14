@@ -32,6 +32,7 @@ from job_apply_bot.ats.router import ATSRouter
 
 def _summarize(start: Dict[str, int], add: Tuple[int, int, int, int]) -> Dict[str, int]:
 
+
     applied, skipped, failed, manual = add
     start["applied"] += applied
     start["skipped"] += skipped
@@ -58,23 +59,32 @@ def run(settings: Settings, continuous: bool = False) -> None:
     handles = None
 
     try:
-        # 1) Ollama availability check
+        # 1) AI availability check is best-effort only.
+        # Never abort the whole run in GitHub Actions.
         try:
-            # best-effort: call low-cost health check
-            ai_engine.client.check_ollama_running()
+            # When REMOTE_ONLY=true, AI engine should already be in fallback mode.
+            if getattr(settings, "remote_only", False) is not True:
+                ai_engine.client.check_ollama_running()
         except Exception as e:
-            logger.error(f"Ollama unavailable. Aborting safely: {e}")
-            return
+            logger.error(f"AI/Ollama unavailable. Continuing with fallback mode: {e}")
 
         # 2) Load sessions (best-effort per platform)
         platforms = ["linkedin", "naukri", "indeed"]
         session_paths: Dict[str, str] = {}
         for p in platforms:
             try:
-                session_paths[p] = session_mgr.ensure_session_or_raise(p)
-            except FileNotFoundError as e:
-                logger.error(str(e))
-                logger.info(f"Skipping platform='{p}'. Create its session_state by running login flow first.")
+                # If session artifacts don't exist (common in CI), skip platform without failing.
+                if session_mgr.session_exists(p):
+                    session_paths[p] = session_mgr.get_session_path(p)
+                else:
+                    logger.warning(
+                        "No session artifacts for platform='%s' (expected: %s). Skipping this platform.",
+                        p,
+                        session_mgr.get_session_path(p),
+                    )
+            except Exception as e:
+                logger.error("Failed to load session path for platform='%s': %s", p, e)
+
 
         # 3) Launch browser per platform (shared manager, separate contexts)
         # Using sequential contexts to avoid cross-platform selector/session issues.
@@ -86,6 +96,7 @@ def run(settings: Settings, continuous: bool = False) -> None:
                 platform=p,
                 storage_state_path=session_paths[p],
             )
+
 
             page = handles.page
 
@@ -109,8 +120,14 @@ def run(settings: Settings, continuous: bool = False) -> None:
                     )
                     summary = _summarize(summary, (applied, skipped, failed, manual_required))
                 except Exception as e:
-                    logger.error(f"{p.capitalize()} failed for role={role}: {e}. Continuing next role.")
+                    logger.exception(
+                        "%s failed for role=%s. Continuing next role. Error: %s",
+                        p.capitalize(),
+                        role,
+                        e,
+                    )
                     continue
+
                 finally:
                     try:
                         handles.context.close()
@@ -129,6 +146,7 @@ def run(settings: Settings, continuous: bool = False) -> None:
             f"applied={summary['applied']}, skipped={summary['skipped']}, failed={summary['failed']}, "
             f"manual_required={summary['manual_required']}"
         )
+
 
     finally:
         # Always cleanup
